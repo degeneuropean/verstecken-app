@@ -1,0 +1,2337 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <title>Verstecken – Verbrannt</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <style>
+    :root {
+      --bg: #0d0d0d;
+      --surface: #161616;
+      --surface2: #1f1f1f;
+      --border: #2a2a2a;
+      --accent: #ff3b30;
+      --accent2: #ff9500;
+      --safe: #30d158;
+      --text: #f5f5f5;
+      --muted: #888;
+      --seeker: #ff3b30;
+      --hider: #0a84ff;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', sans-serif;
+      min-height: 100dvh;
+      overflow-x: hidden;
+    }
+
+    h1, h2, .label {
+      font-family: 'Bebas Neue', sans-serif;
+      letter-spacing: 0.05em;
+    }
+
+    /* ── SCREENS ── */
+    .screen { display: none; min-height: 100dvh; flex-direction: column; }
+    .screen.active { display: flex; }
+
+    /* ── HOME ── */
+    #screen-home {
+      align-items: center;
+      justify-content: center;
+      padding: 2rem;
+      gap: 2rem;
+      background: radial-gradient(ellipse at 50% 0%, #2a0a0a 0%, var(--bg) 60%);
+    }
+
+    .logo {
+      text-align: center;
+    }
+    .logo h1 {
+      font-size: 4rem;
+      color: var(--accent);
+      line-height: 1;
+      text-shadow: 0 0 40px rgba(255,59,48,0.4);
+    }
+    .logo p {
+      color: var(--muted);
+      font-size: 0.85rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      margin-top: 0.25rem;
+    }
+
+    .btn {
+      display: block;
+      width: 100%;
+      padding: 1rem;
+      border: none;
+      border-radius: 10px;
+      font-family: 'Inter', sans-serif;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .btn:active { transform: scale(0.97); }
+
+    .btn-primary {
+      background: var(--accent);
+      color: white;
+    }
+    .btn-secondary {
+      background: var(--surface2);
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+    .btn-safe {
+      background: var(--safe);
+      color: #000;
+    }
+    .btn-danger {
+      background: var(--accent);
+      color: white;
+    }
+    .btn-ghost {
+      background: transparent;
+      color: var(--muted);
+      font-size: 0.85rem;
+    }
+
+    .home-actions { width: 100%; max-width: 340px; display: flex; flex-direction: column; gap: 0.75rem; }
+
+    .input-group { display: flex; flex-direction: column; gap: 0.4rem; width: 100%; max-width: 340px; }
+    .input-group label { font-size: 0.8rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; }
+    input[type="text"], input[type="number"] {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-family: 'Inter', sans-serif;
+      font-size: 1rem;
+      padding: 0.75rem 1rem;
+      width: 100%;
+      outline: none;
+    }
+    input:focus { border-color: var(--accent); }
+
+    /* ── SETUP ── */
+    #screen-setup {
+      padding: 0;
+    }
+
+    .setup-header {
+      padding: 1.25rem 1.25rem 0;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+    .setup-header h2 { font-size: 1.8rem; }
+
+    .back-btn {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-radius: 8px;
+      width: 36px;
+      height: 36px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 1.1rem;
+      flex-shrink: 0;
+    }
+
+    #setup-map {
+      flex: 1;
+      min-height: 280px;
+    }
+
+    .setup-panel {
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      padding: 1rem 1.25rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .setup-row {
+      display: flex;
+      gap: 0.75rem;
+      align-items: flex-end;
+    }
+    .setup-row .input-group { flex: 1; }
+
+    .map-instructions {
+      background: var(--surface2);
+      border-radius: 8px;
+      padding: 0.65rem 0.9rem;
+      font-size: 0.8rem;
+      color: var(--muted);
+      border-left: 3px solid var(--accent);
+    }
+    .map-instructions b { color: var(--text); }
+
+    .mode-btns {
+      display: flex;
+      gap: 0.5rem;
+    }
+    .mode-btn {
+      flex: 1;
+      padding: 0.5rem;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--surface2);
+      color: var(--muted);
+      font-size: 0.75rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s;
+      text-align: center;
+    }
+    .mode-btn.active {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: white;
+    }
+
+    /* ── LOBBY ── */
+    #screen-lobby {
+      padding: 1.5rem 1.25rem;
+      gap: 1.25rem;
+    }
+
+    .lobby-header { display: flex; align-items: center; gap: 1rem; }
+    .lobby-header h2 { font-size: 1.8rem; flex: 1; }
+
+    .game-code-box {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1rem;
+      text-align: center;
+    }
+    .game-code-box .label { font-size: 0.75rem; color: var(--muted); }
+    .game-code-box .code { font-size: 2.5rem; color: var(--accent); letter-spacing: 0.15em; }
+
+    .players-list { display: flex; flex-direction: column; gap: 0.5rem; }
+    .player-item {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 0.75rem 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+    .player-role {
+      font-size: 0.65rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      padding: 0.2rem 0.5rem;
+      border-radius: 4px;
+    }
+    .role-seeker { background: rgba(255,59,48,0.2); color: var(--seeker); }
+    .role-hider { background: rgba(10,132,255,0.2); color: var(--hider); }
+    .player-name { font-weight: 600; flex: 1; }
+    .player-host { font-size: 0.7rem; color: var(--accent2); }
+
+    .section-title {
+      font-size: 0.75rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+    }
+
+    /* ── ROLE PICK ── */
+    #screen-role {
+      padding: 1.5rem 1.25rem;
+      gap: 1.25rem;
+      align-items: center;
+      justify-content: center;
+      background: radial-gradient(ellipse at 50% 0%, #0a1a2a 0%, var(--bg) 60%);
+    }
+    #screen-role h2 { font-size: 2.5rem; text-align: center; }
+
+    .role-cards { display: flex; flex-direction: column; gap: 1rem; width: 100%; max-width: 340px; }
+    .role-card {
+      background: var(--surface);
+      border: 2px solid var(--border);
+      border-radius: 16px;
+      padding: 1.5rem;
+      cursor: pointer;
+      transition: all 0.15s;
+      text-align: center;
+    }
+    .role-card:active { transform: scale(0.97); }
+    .role-card.seeker { border-color: var(--seeker); }
+    .role-card.hider { border-color: var(--hider); }
+    .role-card .icon { font-size: 2.5rem; margin-bottom: 0.5rem; }
+    .role-card h3 { font-family: 'Bebas Neue', sans-serif; font-size: 1.5rem; letter-spacing: 0.05em; }
+    .role-card p { font-size: 0.8rem; color: var(--muted); margin-top: 0.25rem; }
+
+    /* ── GAME ── */
+    #screen-game { position: relative; }
+    #game-map { position: absolute; inset: 0; }
+
+    .hud {
+      position: absolute;
+      bottom: 0; left: 0; right: 0;
+      background: linear-gradient(to top, rgba(13,13,13,0.97) 70%, transparent);
+      padding: 1.25rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      z-index: 1000;
+    }
+
+    .hud-top {
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      padding: 0.75rem 1rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      z-index: 1000;
+      pointer-events: none;
+    }
+
+    .status-pill {
+      background: rgba(13,13,13,0.85);
+      backdrop-filter: blur(8px);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 0.4rem 0.85rem;
+      font-size: 0.75rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+    .status-pill .dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: var(--safe);
+      animation: pulse 1.5s infinite;
+    }
+    .status-pill.warning .dot { background: var(--accent2); }
+    .status-pill.danger .dot { background: var(--accent); }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+
+    .timer-pill {
+      background: rgba(13,13,13,0.85);
+      backdrop-filter: blur(8px);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 0.4rem 0.85rem;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+
+    .player-list-hud {
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+      max-height: 130px;
+      overflow-y: auto;
+    }
+    .hud-player {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      background: var(--surface2);
+      border-radius: 8px;
+      padding: 0.4rem 0.75rem;
+      font-size: 0.8rem;
+    }
+    .hud-player .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .hud-player.out { opacity: 0.4; text-decoration: line-through; }
+
+    .big-btn {
+      padding: 1rem;
+      border-radius: 14px;
+      border: none;
+      font-size: 1.1rem;
+      font-weight: 700;
+      cursor: pointer;
+      width: 100%;
+      font-family: 'Inter', sans-serif;
+      transition: all 0.15s;
+    }
+    .big-btn:active { transform: scale(0.97); }
+
+    .catch-select {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 0.75rem 1rem;
+      color: var(--text);
+      font-family: 'Inter', sans-serif;
+      font-size: 0.9rem;
+      width: 100%;
+    }
+
+    /* ── ALERT OVERLAY ── */
+    .overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.85);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+      padding: 2rem;
+      display: none;
+    }
+    .overlay.show { display: flex; }
+    .alert-box {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 2rem;
+      text-align: center;
+      max-width: 320px;
+      width: 100%;
+    }
+    .alert-box .icon { font-size: 3rem; margin-bottom: 1rem; }
+    .alert-box h3 { font-size: 1.5rem; margin-bottom: 0.5rem; }
+    .alert-box p { color: var(--muted); font-size: 0.85rem; margin-bottom: 1.5rem; }
+
+    /* ── CATCH RACE ── */
+    #catch-race-overlay .alert-box { border-color: var(--accent); }
+    .race-timer {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 4rem;
+      color: var(--accent);
+      line-height: 1;
+      margin: 0.5rem 0 1rem;
+    }
+
+    /* ── END ── */
+    #screen-end {
+      align-items: center;
+      justify-content: center;
+      padding: 2rem;
+      gap: 1.5rem;
+      text-align: center;
+    }
+    #screen-end .big-icon { font-size: 5rem; }
+    #screen-end h2 { font-size: 3rem; }
+    #screen-end p { color: var(--muted); }
+
+    /* scrollbar */
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+    .leaflet-container { background: #1a1a1a !important; }
+
+    /* notification banner */
+    #notif {
+      position: fixed;
+      top: 1rem; left: 50%;
+      transform: translateX(-50%);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 0.75rem 1.25rem;
+      font-size: 0.85rem;
+      font-weight: 600;
+      z-index: 9998;
+      opacity: 0;
+      transition: opacity 0.3s;
+      pointer-events: none;
+      white-space: nowrap;
+    }
+    #notif.show { opacity: 1; }
+  </style>
+</head>
+<body>
+
+<!-- NOTIFICATION -->
+<div id="notif"></div>
+
+<!-- ════════════════════════════════════════
+     SCREEN: HOME
+════════════════════════════════════════ -->
+<div id="screen-home" class="screen active">
+  <div class="logo">
+    <h1>VERBRANNT</h1>
+    <p>Das ultimative Versteckspiel</p>
+  </div>
+
+  <div class="input-group">
+    <label>Dein Name</label>
+    <input type="text" id="player-name-input" placeholder="z.B. Max" maxlength="16" />
+  </div>
+
+  <div class="home-actions">
+    <button class="btn btn-primary" onclick="createGame()">🎮 Neues Spiel erstellen</button>
+    <div style="display:flex;gap:0.5rem">
+      <input type="text" id="join-code-input" placeholder="Code eingeben" maxlength="6"
+             style="text-transform:uppercase;letter-spacing:0.1em;flex:1" />
+      <button class="btn btn-secondary" style="width:auto;padding:0 1.25rem" onclick="joinGame()">Beitreten</button>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════
+     SCREEN: SETUP (nur Host)
+════════════════════════════════════════ -->
+<div id="screen-setup" class="screen">
+  <div class="setup-header">
+    <div class="back-btn" onclick="showScreen('home')">←</div>
+    <h2>SPIELZONE</h2>
+  </div>
+
+  <div id="setup-map"></div>
+
+  <div class="setup-panel">
+    <div class="map-instructions" id="map-hint">
+      <b>Tippe auf die Karte</b> um die Spielzone zu zeichnen
+    </div>
+
+    <div class="mode-btns">
+      <div class="mode-btn active" id="mode-zone" onclick="setMapMode('zone')">🗺️ Zone zeichnen</div>
+      <div class="mode-btn" id="mode-point" onclick="setMapMode('point')">📍 Freipunkt setzen</div>
+    </div>
+
+    <div class="setup-row">
+      <div class="input-group">
+        <label>Max. Sucher</label>
+        <input type="number" id="max-seekers" value="2" min="1" max="3" />
+      </div>
+      <div class="input-group">
+        <label>Versteckzeit (Sek.)</label>
+        <input type="number" id="hide-time" value="60" min="10" max="300" />
+      </div>
+    </div>
+    <div class="setup-row">
+      <div class="input-group">
+        <label>Freipunkt-Radius (m)</label>
+        <input type="number" id="free-radius" value="8" min="3" max="50" oninput="updateZonePreview()" />
+      </div>
+      <div class="input-group">
+        <label>Warnzone-Radius (m)</label>
+        <input type="number" id="warn-radius" value="15" min="8" max="80" oninput="updateZonePreview()" />
+      </div>
+    </div>
+    <div class="setup-row">
+      <div class="input-group">
+        <label>Max. Zeit Sucher in Warnzone (Sek.)</label>
+        <input type="number" id="seeker-camp-time" value="10" min="5" max="60" />
+      </div>
+      <div class="input-group">
+        <label>Max. Zeit Gesuchter in Warnzone (Sek.)</label>
+        <input type="number" id="hider-camp-time" value="10" min="5" max="60" />
+      </div>
+    </div>
+
+    <button class="btn btn-primary" onclick="startLobby()">Lobby erstellen →</button>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════
+     SCREEN: LOBBY
+════════════════════════════════════════ -->
+<div id="screen-lobby" class="screen">
+  <div class="lobby-header">
+    <div class="back-btn" onclick="leaveLobby()">←</div>
+    <h2>LOBBY</h2>
+  </div>
+
+  <div class="game-code-box">
+    <div class="label">Spielcode – teile ihn mit deinen Freunden</div>
+    <div class="code" id="lobby-code">------</div>
+    <button class="btn-ghost btn" style="margin-top:0.25rem" onclick="copyCode()">📋 Kopieren</button>
+  </div>
+
+  <div class="section-title">Spieler (<span id="player-count">0</span>)</div>
+  <div class="players-list" id="players-list"></div>
+
+  <!-- GPS permission prompt -->
+  <div id="gps-prompt" style="background:rgba(255,149,0,0.12);border:1px solid var(--accent2);border-radius:10px;padding:0.75rem 1rem;display:flex;align-items:center;gap:0.75rem">
+    <span style="font-size:1.3rem">📍</span>
+    <div style="flex:1">
+      <div style="font-size:0.8rem;font-weight:600;color:var(--accent2)">GPS noch nicht aktiv</div>
+      <div style="font-size:0.72rem;color:var(--muted)">Tippe um Standortzugriff zu erlauben</div>
+    </div>
+    <button class="btn btn-secondary" style="width:auto;padding:0.4rem 0.85rem;font-size:0.8rem" onclick="requestGPS()">Aktivieren</button>
+  </div>
+
+  <div style="display:flex;flex-direction:column;gap:0.5rem;margin-top:auto">
+    <div class="mode-btns">
+      <div class="mode-btn seeker-btn" id="lobby-pick-seeker" onclick="pickRole('seeker')" style="border-color:var(--seeker)">🔦 Sucher</div>
+      <div class="mode-btn hider-btn" id="lobby-pick-hider" onclick="pickRole('hider')" style="border-color:var(--hider)">🫥 Verstecker</div>
+    </div>
+    <div id="host-controls" style="display:none">
+      <button class="btn btn-primary" id="start-game-btn" onclick="startGame()" disabled>
+        🚀 Spiel starten
+      </button>
+    </div>
+    <div id="guest-controls" style="display:none">
+      <p style="font-size:0.8rem;color:var(--muted);text-align:center">
+        Warte bis der Host das Spiel startet…
+      </p>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════
+     SCREEN: ROLE PICK
+════════════════════════════════════════ -->
+<div id="screen-role" class="screen">
+  <h2>WÄHLE DEINE ROLLE</h2>
+  <p style="color:var(--muted);font-size:0.85rem;text-align:center">Maximal <span id="max-seekers-display">2</span> Sucher erlaubt</p>
+
+  <div class="role-cards">
+    <div class="role-card seeker" onclick="pickRole('seeker')">
+      <div class="icon">🔦</div>
+      <h3>SUCHER</h3>
+      <p>Finde alle Verstecker – drücke Catch wenn du jemanden siehst, dann race zum Freipunkt!</p>
+    </div>
+    <div class="role-card hider" onclick="pickRole('hider')">
+      <div class="icon">🫥</div>
+      <h3>VERSTECKER</h3>
+      <p>Verstecke dich und versuche vor dem Sucher am Freipunkt zu sein</p>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════
+     SCREEN: GAME
+════════════════════════════════════════ -->
+<div id="screen-game" class="screen">
+  <div id="game-map"></div>
+
+  <div class="hud-top">
+    <div class="status-pill" id="status-pill">
+      <div class="dot"></div>
+      <span id="status-text">Im Spiel</span>
+    </div>
+    <div class="timer-pill" id="game-timer" style="display:none">⏱ <span id="timer-val">--</span></div>
+  </div>
+
+  <!-- GPS warning banner -->
+  <div id="gps-warning" style="display:none;position:absolute;top:3.5rem;left:50%;transform:translateX(-50%);z-index:1001;white-space:nowrap">
+    <div style="background:rgba(255,59,48,0.9);backdrop-filter:blur(8px);border-radius:10px;padding:0.4rem 0.9rem;font-size:0.75rem;font-weight:600;color:white">
+      ⚠️ Kein GPS – Einstellungen → Safari → Standort → Erlauben
+    </div>
+  </div>
+
+  <!-- BIG HIDE PHASE TIMER -->
+  <div id="hide-timer-overlay" style="display:none;position:absolute;inset:0;z-index:500;pointer-events:none;align-items:center;justify-content:center;flex-direction:column;gap:0.5rem">
+    <div style="background:rgba(13,13,13,0.45);backdrop-filter:blur(4px);border-radius:24px;padding:1.25rem 2rem;text-align:center;border:1px solid rgba(255,255,255,0.08)">
+      <div style="font-size:0.75rem;color:rgba(255,255,255,0.6);text-transform:uppercase;letter-spacing:0.1em;font-weight:600;margin-bottom:0.25rem" id="hide-timer-label">Versteckzeit</div>
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:5rem;line-height:1;color:var(--accent2)" id="hide-timer-big">60</div>
+    </div>
+  </div>
+
+  <div class="hud">
+    <div class="player-list-hud" id="hud-players"></div>
+
+    <!-- SEEKER controls -->
+    <div id="seeker-controls" style="display:none">
+      <select class="catch-select" id="catch-target">
+        <option value="">– Spieler wählen –</option>
+      </select>
+      <button class="big-btn" style="background:var(--accent);color:white;margin-top:0.5rem" onclick="pressCatch()">
+        🎯 CATCH!
+      </button>
+    </div>
+
+    <!-- HIDER controls -->
+    <div id="hider-controls" style="display:none;display:flex;flex-direction:column;gap:0.5rem">
+      <button class="big-btn" id="free-btn" style="background:var(--safe);color:#000;display:none" onclick="tryFreeMyself()">
+        🏁 Freipunkt betreten!
+      </button>
+      <button class="big-btn" id="ghost-btn" style="background:var(--surface2);color:var(--text);border:1px solid var(--border)" onclick="toggleGhost()">
+        👻 Ghost Modus: AUS
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════
+     SCREEN: RECAP
+════════════════════════════════════════ -->
+<div id="screen-recap" class="screen" style="position:relative">
+  <div id="recap-map" style="position:absolute;inset:0"></div>
+
+  <!-- Top bar -->
+  <div style="position:absolute;top:0;left:0;right:0;z-index:1000;padding:0.75rem 1rem;display:flex;align-items:center;gap:0.75rem;background:linear-gradient(to bottom,rgba(13,13,13,0.9) 60%,transparent)">
+    <div style="font-family:'Bebas Neue',sans-serif;font-size:1.5rem;color:var(--accent);letter-spacing:0.05em">RECAP</div>
+    <div style="flex:1"></div>
+    <div id="recap-time-display" style="background:rgba(13,13,13,0.8);border:1px solid var(--border);border-radius:20px;padding:0.3rem 0.8rem;font-size:0.8rem;font-weight:600;font-family:'Bebas Neue',sans-serif;font-size:1.1rem;letter-spacing:0.05em">0s</div>
+  </div>
+
+  <!-- Event banner -->
+  <div id="recap-event-banner" style="display:none;position:absolute;top:3.5rem;left:50%;transform:translateX(-50%);z-index:1001;white-space:nowrap">
+    <div style="background:rgba(13,13,13,0.92);backdrop-filter:blur(8px);border-radius:12px;padding:0.5rem 1rem;font-size:0.85rem;font-weight:600;border:1px solid var(--border)" id="recap-event-text"></div>
+  </div>
+
+  <!-- Bottom controls -->
+  <div style="position:absolute;bottom:0;left:0;right:0;z-index:1000;padding:1rem 1.25rem;background:linear-gradient(to top,rgba(13,13,13,0.95) 70%,transparent);display:flex;flex-direction:column;gap:0.75rem">
+
+    <!-- Player legend -->
+    <div id="recap-legend" style="display:flex;flex-wrap:wrap;gap:0.4rem"></div>
+
+    <!-- Progress bar -->
+    <div style="background:var(--border);border-radius:4px;height:4px;width:100%;overflow:hidden">
+      <div id="recap-progress" style="background:var(--accent);height:100%;width:0%;transition:width 0.1s linear"></div>
+    </div>
+
+    <!-- Controls -->
+    <div style="display:flex;align-items:center;gap:0.75rem">
+      <button id="recap-play-btn" onclick="recapTogglePlay()" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:0.5rem 0.9rem;font-size:1rem;cursor:pointer">▶️</button>
+      <div style="flex:1;display:flex;flex-direction:column;gap:0.2rem">
+        <div style="display:flex;justify-content:space-between;font-size:0.65rem;color:var(--muted)">
+          <span>Langsam</span><span>Geschwindigkeit</span><span>Schnell</span>
+        </div>
+        <input type="range" id="recap-speed" min="1" max="60" value="15" style="width:100%;accent-color:var(--accent)" oninput="recapSetSpeed(this.value)">
+      </div>
+    </div>
+
+    <button class="btn btn-primary" onclick="showLeaderboardFromRecap()">📊 Zum Leaderboard →</button>
+  </div>
+</div>
+
+
+<div id="screen-end" class="screen" style="padding:1.5rem 1.25rem;gap:1rem;overflow-y:auto">
+  <div style="text-align:center">
+    <div class="big-icon" id="end-icon">🏆</div>
+    <h2 id="end-title">SPIEL VORBEI</h2>
+    <p id="end-subtitle" style="color:var(--muted)">–</p>
+  </div>
+
+  <div class="section-title">LEADERBOARD</div>
+  <div id="leaderboard-list" style="display:flex;flex-direction:column;gap:0.5rem"></div>
+
+  <div style="display:flex;flex-direction:column;gap:0.5rem;max-width:300px;margin:0.5rem auto 0;width:100%">
+    <button class="btn btn-primary" id="play-again-btn" onclick="playAgain()" style="display:none">🔄 Nochmal spielen</button>
+    <button class="btn btn-secondary" onclick="returnHome()">🏠 Zurück zum Start</button>
+  </div>
+</div>
+
+<!-- WARN ZONE TIMER BANNER -->
+<div id="warnzone-banner" style="display:none;position:fixed;bottom:180px;left:50%;transform:translateX(-50%);z-index:2000;pointer-events:none">
+  <div style="background:rgba(13,13,13,0.92);backdrop-filter:blur(12px);border:2px solid var(--accent2);border-radius:14px;padding:0.6rem 1.2rem;display:flex;align-items:center;gap:0.75rem;white-space:nowrap">
+    <span style="font-size:1.2rem">⚠️</span>
+    <div>
+      <div style="font-size:0.65rem;color:var(--accent2);text-transform:uppercase;letter-spacing:0.08em;font-weight:700">Verlasse die Warnzone!</div>
+      <div style="font-size:0.75rem;color:var(--muted)" id="warnzone-desc">Noch <span id="warnzone-countdown" style="color:var(--accent);font-weight:700">10</span>s</div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════
+     OVERLAY: CATCH RACE
+════════════════════════════════════════ -->
+<div id="catch-race-overlay" style="display:none;position:fixed;top:1rem;left:50%;transform:translateX(-50%);z-index:9999;pointer-events:none">
+  <div style="background:rgba(13,13,13,0.92);backdrop-filter:blur(12px);border:1px solid var(--accent);border-radius:16px;padding:0.75rem 1.25rem;display:flex;align-items:center;gap:0.75rem;min-width:260px">
+    <div style="font-size:1.5rem" id="race-icon">🏃</div>
+    <div style="flex:1">
+      <div style="font-size:0.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em" id="race-title">RACE ZUM PUNKT!</div>
+      <div id="race-result" style="display:none"><span id="race-result-text" style="font-weight:700;font-size:0.9rem"></span></div>
+      <div id="race-desc" style="font-size:0.75rem;color:var(--muted)">Wer zuerst am Freipunkt ist gewinnt!</div>
+    </div>
+    <div style="font-family:'Bebas Neue',sans-serif;font-size:2.5rem;color:var(--accent);line-height:1" id="race-countdown">15</div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════
+     OVERLAY: OUT OF BOUNDS
+════════════════════════════════════════ -->
+<div class="overlay" id="oob-overlay">
+  <div class="alert-box">
+    <div class="icon">⚠️</div>
+    <h3>SPIELFELD VERLASSEN!</h3>
+    <div class="race-timer" id="oob-countdown" style="color:var(--accent2)">10</div>
+    <p>Kehre sofort zurück oder du scheidest aus!</p>
+  </div>
+</div>
+
+<!-- Firebase + Leaflet -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getDatabase, ref, set, get, onValue, update, push, remove }
+  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+
+// ── FIREBASE CONFIG ──────────────────────
+const firebaseConfig = {
+  apiKey: "AIzaSyDvea3Hue5ryXE83QO4rjWxZDxG-FS8cj8",
+  authDomain: "verstecken-verbrannt.firebaseapp.com",
+  databaseURL: "https://verstecken-verbrannt-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "verstecken-verbrannt",
+  storageBucket: "verstecken-verbrannt.firebasestorage.app",
+  messagingSenderId: "629178577083",
+  appId: "1:629178577083:web:c263b3c11139e55d33799e",
+  measurementId: "G-H0Y4PL3DX5"
+};
+
+const fbApp = initializeApp(firebaseConfig);
+const db = getDatabase(fbApp);
+
+// ── STATE ────────────────────────────────
+let myName = '';
+let myId = '';
+let gameCode = '';
+let isHost = false;
+let myRole = null; // 'seeker' | 'hider'
+let gameState = null;
+let setupMap = null, gameMap = null;
+let zonePolygon = null, zonePoints = [], freePoint = null, freeMarker = null;
+let mapMode = 'zone';
+let myMarker = null;
+let playerMarkers = {};
+let watchId = null;
+let myPos = null;
+let outOfBoundsTimer = null;
+let antiCampTimer = null;
+let catchRaceTimer = null;
+let gameListener = null;
+
+// ── HELPERS ──────────────────────────────
+function uid() {
+  return Math.random().toString(36).slice(2, 10);
+}
+function code6() {
+  return Math.random().toString(36).toUpperCase().slice(2, 8);
+}
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('screen-' + id).classList.add('active');
+}
+function notify(msg, color = '#f5f5f5') {
+  const el = document.getElementById('notif');
+  el.textContent = msg;
+  el.style.borderColor = color;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 2800);
+}
+function gRef(path) { return ref(db, path); }
+
+// ── GPS DISTANCE (meters) ─────────────────
+function dist(lat1, lon1, lat2, lon2) {
+  const R = 6371000;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)**2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+
+// point-in-polygon (ray casting)
+function pointInPolygon(pt, poly) {
+  let inside = false;
+  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+    const xi = poly[i][0], yi = poly[i][1];
+    const xj = poly[j][0], yj = poly[j][1];
+    if (((yi > pt[1]) !== (yj > pt[1])) && (pt[0] < (xj - xi) * (pt[1] - yi) / (yj - yi) + xi))
+      inside = !inside;
+  }
+  return inside;
+}
+
+// ── HOME / CREATE / JOIN ──────────────────
+window.createGame = function() {
+  myName = document.getElementById('player-name-input').value.trim();
+  if (!myName) { notify('Bitte gib deinen Namen ein!', 'var(--accent)'); return; }
+  myId = uid();
+  isHost = true;
+  showScreen('setup');
+  initSetupMap();
+};
+
+window.joinGame = function() {
+  myName = document.getElementById('player-name-input').value.trim();
+  const c = document.getElementById('join-code-input').value.trim().toUpperCase();
+  if (!myName) { notify('Bitte gib deinen Namen ein!', 'var(--accent)'); return; }
+  if (!c) { notify('Bitte gib einen Code ein!', 'var(--accent)'); return; }
+  myId = uid();
+  isHost = false;
+  gameCode = c;
+  // check if game exists
+  get(gRef('games/' + c)).then(snap => {
+    if (!snap.exists()) { notify('Spiel nicht gefunden!', 'var(--accent)'); return; }
+    const g = snap.val();
+    if (g.status !== 'lobby') { notify('Dieses Spiel hat bereits begonnen!', 'var(--accent)'); return; }
+    // join
+    set(gRef('games/' + c + '/players/' + myId), {
+      name: myName,
+      role: null,
+      status: 'active',
+      lat: null, lng: null,
+      joinedAt: Date.now()
+    }).then(() => {
+      enterLobby(c);
+    });
+  });
+};
+
+// ── AUDIO (pre-init on user gesture for iOS) ──
+let audioCtx = null;
+function unlockAudio() {
+  if (audioCtx) return;
+  try {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    // play silent buffer to unlock
+    const buf = audioCtx.createBuffer(1, 1, 22050);
+    const src = audioCtx.createBufferSource();
+    src.buffer = buf;
+    src.connect(audioCtx.destination);
+    src.start(0);
+  } catch(e) {}
+}
+
+function playAlarm() {
+  // vibrate
+  if (navigator.vibrate) navigator.vibrate([400, 100, 400, 100, 600]);
+  // beep using pre-unlocked context
+  try {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.connect(gain); gain.connect(audioCtx.destination);
+    osc.type = 'square';
+    osc.frequency.setValueAtTime(880, audioCtx.currentTime);
+    osc.frequency.setValueAtTime(660, audioCtx.currentTime + 0.2);
+    osc.frequency.setValueAtTime(880, audioCtx.currentTime + 0.4);
+    gain.gain.setValueAtTime(0.4, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.8);
+    osc.start(audioCtx.currentTime);
+    osc.stop(audioCtx.currentTime + 0.8);
+  } catch(e) {}
+}
+// ── ZONE PREVIEW CIRCLES ─────────────────
+let previewFreeCircle = null, previewWarnCircle = null;
+window.updateZonePreview = function() {
+  if (!setupMap || !freePoint) return;
+  const fr = parseInt(document.getElementById('free-radius').value) || 8;
+  const wr = parseInt(document.getElementById('warn-radius').value) || 15;
+  if (previewFreeCircle) setupMap.removeLayer(previewFreeCircle);
+  if (previewWarnCircle) setupMap.removeLayer(previewWarnCircle);
+  previewWarnCircle = L.circle([freePoint.lat, freePoint.lng], { radius: wr, color: '#ff9500', fillOpacity: 0.08, weight: 1, dashArray: '4' }).addTo(setupMap);
+  previewFreeCircle = L.circle([freePoint.lat, freePoint.lng], { radius: fr, color: '#30d158', fillOpacity: 0.15, weight: 2 }).addTo(setupMap);
+};
+
+function convexHull(points) {
+  if (points.length < 3) return points;
+  // find bottom-most point
+  let start = points.reduce((a, b) => (b[1] < a[1] || (b[1] === a[1] && b[0] < a[0])) ? b : a);
+  const angle = p => Math.atan2(p[1] - start[1], p[0] - start[0]);
+  const cross = (O, A, B) => (A[0]-O[0])*(B[1]-O[1]) - (A[1]-O[1])*(B[0]-O[0]);
+  const sorted = points.slice().sort((a, b) => {
+    const d = angle(a) - angle(b);
+    if (Math.abs(d) > 1e-10) return d;
+    return (a[0]-start[0])**2+(a[1]-start[1])**2 - (b[0]-start[0])**2-(b[1]-start[1])**2;
+  });
+  const hull = [];
+  for (const p of sorted) {
+    while (hull.length >= 2 && cross(hull[hull.length-2], hull[hull.length-1], p) <= 0)
+      hull.pop();
+    hull.push(p);
+  }
+  return hull;
+}
+
+// ── SETUP MAP ────────────────────────────
+function initSetupMap() {
+  if (setupMap) return;
+  setupMap = L.map('setup-map', { zoomControl: true }).setView([51.1657, 10.4515], 13);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© OpenStreetMap'
+  }).addTo(setupMap);
+
+  // try to center on user location
+  navigator.geolocation.getCurrentPosition(pos => {
+    setupMap.setView([pos.coords.latitude, pos.coords.longitude], 16);
+  });
+
+  setupMap.on('click', onSetupMapClick);
+}
+
+function setMapMode(mode) {
+  mapMode = mode;
+  document.getElementById('mode-zone').classList.toggle('active', mode === 'zone');
+  document.getElementById('mode-point').classList.toggle('active', mode === 'point');
+  const hint = document.getElementById('map-hint');
+  if (mode === 'zone') hint.innerHTML = '<b>Tippe auf die Karte</b> um die Spielzone zu zeichnen (mind. 3 Punkte)';
+  else hint.innerHTML = '<b>Tippe auf die Karte</b> um den Freipunkt zu setzen';
+}
+window.setMapMode = setMapMode;
+
+function onSetupMapClick(e) {
+  if (mapMode === 'zone') {
+    const pt = [e.latlng.lat, e.latlng.lng];
+    zonePoints.push(pt);
+    if (zonePolygon) setupMap.removeLayer(zonePolygon);
+    if (zonePoints.length >= 3) {
+      const hull = convexHull(zonePoints);
+      zonePolygon = L.polygon(hull, { color: '#ff3b30', fillOpacity: 0.15 }).addTo(setupMap);
+    } else {
+      L.circleMarker(pt, { radius: 5, color: '#ff3b30' }).addTo(setupMap);
+    }
+    document.getElementById('map-hint').innerHTML =
+      `<b>${zonePoints.length} Punkt${zonePoints.length > 1 ? 'e' : ''}</b> gesetzt – tippe weiter oder wechsle zum Freipunkt`;
+  } else {
+    const pt = { lat: e.latlng.lat, lng: e.latlng.lng };
+    freePoint = pt;
+    if (freeMarker) setupMap.removeLayer(freeMarker);
+    freeMarker = L.marker([pt.lat, pt.lng], {
+      icon: L.divIcon({ className: '', html: '<div style="background:#30d158;width:20px;height:20px;border-radius:50%;border:3px solid white;box-shadow:0 0 10px #30d158"></div>', iconAnchor: [10, 10] })
+    }).addTo(setupMap).bindTooltip('Freipunkt', { permanent: true, direction: 'top' });
+    document.getElementById('map-hint').innerHTML = '<b>Freipunkt gesetzt!</b> Du kannst ihn neu setzen oder die Lobby erstellen.';
+    updateZonePreview();
+  }
+}
+
+window.startLobby = async function() {
+  if (zonePoints.length < 3) { notify('Zeichne zuerst die Spielzone (mind. 3 Punkte)!', 'var(--accent)'); return; }
+  if (!freePoint) { notify('Setze den Freipunkt!', 'var(--accent)'); return; }
+
+  gameCode = code6();
+  const maxSeekers = parseInt(document.getElementById('max-seekers').value) || 2;
+  const hideTime = parseInt(document.getElementById('hide-time').value) || 60;
+  const freeRadius = parseInt(document.getElementById('free-radius').value) || 8;
+  const warnRadius = parseInt(document.getElementById('warn-radius').value) || 15;
+  const seekerCampTime = parseInt(document.getElementById('seeker-camp-time').value) || 10;
+  const hiderCampTime = parseInt(document.getElementById('hider-camp-time').value) || 10;
+
+  const hullZone = convexHull(zonePoints);
+
+  await set(gRef('games/' + gameCode), {
+    status: 'lobby',
+    host: myId,
+    maxSeekers,
+    hideTime,
+    freeRadius,
+    warnRadius,
+    seekerCampTime,
+    hiderCampTime,
+    zone: hullZone,
+    freePoint,
+    createdAt: Date.now(),
+    players: {
+      [myId]: { name: myName, role: null, status: 'active', lat: null, lng: null, ghost: false, joinedAt: Date.now() }
+    }
+  });
+
+  enterLobby(gameCode);
+};
+
+// ── LOBBY ────────────────────────────────
+let hidePhaseTriggered = false;
+function enterLobby(code) {
+  gameCode = code;
+  hidePhaseTriggered = false;
+  showScreen('lobby');
+  document.getElementById('lobby-code').textContent = code;
+  document.getElementById('host-controls').style.display = isHost ? 'block' : 'none';
+  document.getElementById('guest-controls').style.display = isHost ? 'none' : 'block';
+
+  // listen for changes
+  gameListener = onValue(gRef('games/' + code), snap => {
+    if (!snap.exists()) return;
+    gameState = snap.val();
+
+    // detect if we were kicked
+    if (!gameState.players?.[myId] && !isHost) {
+      if (gameListener) { gameListener(); gameListener = null; }
+      notify('Du wurdest vom Host gekickt!', 'var(--accent)');
+      myRole = null; gameState = null; gameCode = ''; isHost = false;
+      showScreen('home');
+      return;
+    }
+
+    renderLobby(gameState);
+
+    if (gameState.status === 'hide-phase' && !hidePhaseTriggered) {
+      hidePhaseTriggered = true;
+      startHidePhase();
+      if (isHost) watchHidePhase();
+    }
+    if (gameState.status === 'playing') enterGame();
+    if (gameState.status === 'ended') showEnd(gameState.endReason);
+  });
+}
+
+function renderLobby(state) {
+  const players = state.players || {};
+  const list = document.getElementById('players-list');
+  const count = Object.keys(players).length;
+  document.getElementById('player-count').textContent = count;
+
+  list.innerHTML = Object.entries(players).map(([id, p]) => `
+    <div class="player-item">
+      <div class="player-role ${p.role ? 'role-' + p.role : ''}">${p.role === 'seeker' ? '🔦 Sucher' : p.role === 'hider' ? '🫥 Verstecker' : '❓ Wählt...'}</div>
+      <div class="player-name">${p.name}</div>
+      ${id === state.host ? '<div class="player-host">HOST</div>' : ''}
+      ${isHost && id !== myId ? `<button onclick="kickPlayer('${id}','${p.name}')" style="background:rgba(255,59,48,0.15);border:1px solid var(--accent);border-radius:6px;color:var(--accent);font-size:0.7rem;padding:0.2rem 0.5rem;cursor:pointer;flex-shrink:0">Kick</button>` : ''}
+    </div>
+  `).join('');
+
+  if (isHost) {
+    const allPicked = Object.values(players).every(p => p.role);
+    const btn = document.getElementById('start-game-btn');
+    btn.disabled = !allPicked || count < 2;
+    btn.textContent = !allPicked ? 'Warte auf alle Rollen…' : count < 2 ? 'Mind. 2 Spieler nötig…' : '🚀 Spiel starten';
+  }
+
+  // highlight my current role in lobby buttons
+  const myPlayer = players[myId];
+  if (myPlayer?.role) {
+    document.getElementById('lobby-pick-seeker').classList.toggle('active', myPlayer.role === 'seeker');
+    document.getElementById('lobby-pick-hider').classList.toggle('active', myPlayer.role === 'hider');
+  }
+}
+
+window.kickPlayer = async function(id, name) {
+  if (!isHost) return;
+  await remove(gRef('games/' + gameCode + '/players/' + id));
+  notify(`${name} wurde gekickt`, 'var(--accent)');
+};
+
+window.leaveLobby = function() {
+  if (gameListener) { gameListener(); gameListener = null; }
+  remove(gRef('games/' + gameCode + '/players/' + myId));
+  // full reset
+  myRole = null; gameState = null; gameCode = ''; isHost = false;
+  setupMap = null; gameMap = null;
+  zonePoints = []; freePoint = null; zonePolygon = null; freeMarker = null;
+  myMarker = null; playerMarkers = {}; myPos = null;
+  window._hidePhaseStarted = false;
+  document.getElementById('setup-map').innerHTML = '';
+  document.getElementById('game-map').innerHTML = '';
+  showScreen('home');
+};
+
+window.copyCode = function() {
+  navigator.clipboard.writeText(gameCode).then(() => notify('Code kopiert! 📋'));
+};
+
+// ── ROLE PICK ────────────────────────────
+window.pickRole = async function(role) {
+  if (!gameState) return;
+  const players = gameState.players || {};
+  const seekers = Object.values(players).filter(p => p.role === 'seeker').length;
+  const maxSeekers = gameState.maxSeekers || 2;
+
+  if (role === 'seeker' && seekers >= maxSeekers && players[myId]?.role !== 'seeker') {
+    notify(`Maximal ${maxSeekers} Sucher erlaubt!`, 'var(--accent)'); return;
+  }
+
+  myRole = role;
+  unlockAudio();
+  await update(gRef('games/' + gameCode + '/players/' + myId), { role });
+  notify(role === 'seeker' ? '🔦 Du bist Sucher!' : '🫥 Du bist Verstecker!',
+    role === 'seeker' ? 'var(--seeker)' : 'var(--hider)');
+};
+
+window.startGame = async function() {
+  // trigger role pick for everyone
+  await update(gRef('games/' + gameCode), { status: 'role-pick' });
+};
+
+// ── HIDE PHASE ───────────────────────────
+let hidePhaseInterval = null;
+function startHidePhase() {
+  if (hidePhaseInterval) return;
+  showScreen('game');
+  initGameMap();
+  startGPS();
+  updateHudControls();
+
+  const hideTime = gameState.hideTime || 60;
+  let t = hideTime;
+
+  // Show big timer overlay
+  const overlay = document.getElementById('hide-timer-overlay');
+  overlay.style.display = 'flex';
+  document.getElementById('hide-timer-big').textContent = t;
+  document.getElementById('hide-timer-label').textContent =
+    myRole === 'seeker' ? '⏱ Warte...' : '🫥 Versteck dich!';
+  document.getElementById('hide-timer-big').style.color =
+    myRole === 'seeker' ? 'var(--accent2)' : 'var(--hider)';
+
+  if (myRole === 'seeker') {
+    notify('⏱ Verstecker haben ' + hideTime + ' Sekunden!', 'var(--accent2)');
+  } else {
+    notify('🫥 Verstecke dich! Du hast ' + hideTime + ' Sekunden!', 'var(--hider)');
+  }
+
+  hidePhaseInterval = setInterval(() => {
+    t--;
+    document.getElementById('hide-timer-big').textContent = t;
+
+    // turn red in last 10s
+    if (t <= 10) {
+      document.getElementById('hide-timer-big').style.color = 'var(--accent)';
+    }
+
+    if (t <= 0) {
+      clearInterval(hidePhaseInterval);
+      hidePhaseInterval = null;
+      overlay.style.display = 'none';
+
+      if (myRole === 'seeker') {
+        playAlarm();
+        notify('🔦 LOS! Suche beginnt!', 'var(--accent)');
+      } else {
+        notify('⚠️ Die Suche beginnt jetzt!', 'var(--accent2)');
+      }
+    }
+  }, 1000);
+}
+
+// ── GAME ─────────────────────────────────
+function enterGame() {
+  showScreen('game');
+  initGameMap();
+  startGPS();
+  updateHudControls();
+  startTrackRecording();
+  startShrinkZone();
+  startZoneHudTimer();
+}
+
+function initGameMap() {
+  if (gameMap) return;
+  gameMap = L.map('game-map', { zoomControl: false, attributionControl: false })
+    .setView([51.1657, 10.4515], 16);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(gameMap);
+
+  // (green original zone now drawn dynamically by startShrinkZone)
+  // draw free point + warn zone
+  if (gameState?.freePoint) {
+    const freeRadius = gameState.freeRadius || 8;
+    const warnRadius = gameState.warnRadius || 15;
+    // warn zone (orange)
+    L.circle([gameState.freePoint.lat, gameState.freePoint.lng], {
+      radius: warnRadius, color: '#ff9500', fillColor: '#ff9500', fillOpacity: 0.08, weight: 1, dashArray: '4'
+    }).addTo(gameMap);
+    // free zone (green)
+    L.circle([gameState.freePoint.lat, gameState.freePoint.lng], {
+      radius: freeRadius, color: '#30d158', fillColor: '#30d158', fillOpacity: 0.2, weight: 2
+    }).addTo(gameMap);
+    L.circleMarker([gameState.freePoint.lat, gameState.freePoint.lng], {
+      radius: 6, color: '#30d158', fillColor: '#30d158', fillOpacity: 1, weight: 2
+    }).addTo(gameMap).bindTooltip('🏁 Freipunkt', { permanent: true, direction: 'top' });
+  }
+
+  listenPlayers();
+}
+
+function updateHudControls() {
+  const isPlaying = gameState?.status === 'playing';
+  document.getElementById('seeker-controls').style.display = (myRole === 'seeker' && isPlaying) ? 'block' : 'none';
+  document.getElementById('hider-controls').style.display = myRole === 'hider' ? 'flex' : 'none';
+}
+
+// ── ZONE HUD TIMER ───────────────────────
+let zoneHudInterval = null;
+function startZoneHudTimer() {
+  if (zoneHudInterval) return;
+  const timerEl = document.getElementById('game-timer');
+  const valEl = document.getElementById('timer-val');
+  timerEl.style.display = 'block';
+
+  zoneHudInterval = setInterval(() => {
+    if (!gameState?.startedAt) return;
+    const elapsed = Date.now() - gameState.startedAt;
+    const t = getCurrentShrinkT(Date.now());
+
+    if (elapsed < ZONE_SHRINK_START) {
+      const remaining = Math.ceil((ZONE_SHRINK_START - elapsed) / 1000);
+      const m = Math.floor(remaining / 60);
+      const s = remaining % 60;
+      valEl.textContent = `🟢 ${m}:${s.toString().padStart(2,'0')}`;
+      timerEl.style.borderColor = 'transparent';
+    } else if (t < 1) {
+      const remaining = Math.ceil((ZONE_SHRINK_END - elapsed) / 1000);
+      const m = Math.floor(remaining / 60);
+      const s = remaining % 60;
+      valEl.textContent = `🟠 ${m}:${s.toString().padStart(2,'0')}`;
+      timerEl.style.borderColor = 'var(--accent2)';
+    } else {
+      valEl.textContent = '🔴 Zone zu';
+      timerEl.style.borderColor = 'var(--accent)';
+    }
+  }, 1000);
+}
+
+function stopZoneHudTimer() {
+  if (zoneHudInterval) { clearInterval(zoneHudInterval); zoneHudInterval = null; }
+}
+
+// ── GPS ──────────────────────────────────
+function startGPS() {
+  if (watchId) return;
+  watchId = navigator.geolocation.watchPosition(pos => {
+    myPos = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+    gpsGranted = true;
+    // Hide GPS warning once we get a fix
+    const w = document.getElementById('gps-warning');
+    if (w) w.style.display = 'none';
+    update(gRef('games/' + gameCode + '/players/' + myId), { lat: myPos.lat, lng: myPos.lng });
+
+    if (gameMap) {
+      if (!myMarker) {
+        myMarker = L.circleMarker([myPos.lat, myPos.lng], {
+          radius: 10, color: myRole === 'seeker' ? '#ff3b30' : '#0a84ff',
+          fillOpacity: 0.8, weight: 3
+        }).addTo(gameMap).bindTooltip('Du', { permanent: true });
+        gameMap.setView([myPos.lat, myPos.lng], 17);
+      } else {
+        myMarker.setLatLng([myPos.lat, myPos.lng]);
+      }
+    }
+
+    checkBounds();
+    checkAntiCamp();
+    if (myRole === 'hider' && gameState?.status === 'playing') checkHiderFreePoint();
+
+  }, err => {
+    document.getElementById('gps-warning') && (document.getElementById('gps-warning').style.display = 'block');
+    notify('GPS Fehler: ' + err.message + ' – Standortzugriff in Einstellungen prüfen!', 'var(--accent)');
+  },
+    { enableHighAccuracy: true, maximumAge: 2000, timeout: 10000 });
+
+  // Show GPS warning if no position after 10s
+  gpsCheckTimer = setTimeout(() => {
+    if (!myPos) {
+      const w = document.getElementById('gps-warning');
+      if (w) w.style.display = 'block';
+      notify('⚠️ Kein GPS Signal – Standortzugriff prüfen!', 'var(--accent)');
+    }
+  }, 10000);
+}
+
+function listenPlayers() {
+  onValue(gRef('games/' + gameCode + '/players'), snap => {
+    if (!snap.exists()) return;
+    const players = snap.val();
+    renderHudPlayers(players);
+    updatePlayerMarkers(players);
+    updateCatchTargets(players);
+  });
+
+  onValue(gRef('games/' + gameCode + '/catchRace'), snap => {
+    if (!snap.exists()) {
+      // Race was cancelled or resolved - stop any running timer and hide overlay
+      if (catchRaceTimer) { clearInterval(catchRaceTimer); catchRaceTimer = null; }
+      const overlay = document.getElementById('catch-race-overlay');
+      if (overlay) overlay.style.display = 'none';
+      document.getElementById('race-countdown').style.display = 'block';
+      return;
+    }
+    handleCatchRace(snap.val());
+  });
+}
+
+function renderHudPlayers(players) {
+  const el = document.getElementById('hud-players');
+  el.innerHTML = Object.entries(players).map(([id, p]) => `
+    <div class="hud-player ${p.status === 'out' ? 'out' : ''}">
+      <div class="dot" style="background:${p.role === 'seeker' ? 'var(--seeker)' : 'var(--hider)'}"></div>
+      <span>${p.name}</span>
+      <span style="margin-left:auto;font-size:0.7rem;color:var(--muted)">${p.role === 'seeker' ? '🔦' : '🫥'} ${p.status === 'out' ? '❌' : ''}</span>
+    </div>
+  `).join('');
+}
+
+// ── HIDER SELF-FREE ──────────────────────
+function checkHiderFreePoint() {
+  if (!myPos || !gameState?.freePoint) return;
+  const fp = gameState.freePoint;
+  const freeRadius = gameState.freeRadius || 8;
+  const d = dist(myPos.lat, myPos.lng, fp.lat, fp.lng);
+  const btn = document.getElementById('free-btn');
+  if (btn) btn.style.display = d < freeRadius ? 'block' : 'none';
+}
+
+window.tryFreeMyself = async function() {
+  if (!myPos || !gameState?.freePoint) return;
+  const fp = gameState.freePoint;
+  const freeRadius = gameState.freeRadius || 8;
+  const d = dist(myPos.lat, myPos.lng, fp.lat, fp.lng);
+  if (d > freeRadius) { notify('Du bist nicht nah genug am Freipunkt!', 'var(--accent)'); return; }
+  await update(gRef('games/' + gameCode + '/players/' + myId), { status: 'free', freedAt: Date.now() });
+  notify('✅ Du bist frei!', 'var(--safe)');
+  const btn = document.getElementById('free-btn');
+  if (btn) btn.style.display = 'none';
+  checkWinCondition();
+};
+let ghostMode = false;
+window.toggleGhost = function() {
+  ghostMode = !ghostMode;
+  const btn = document.getElementById('ghost-btn');
+  btn.textContent = ghostMode ? '👻 Ghost Modus: AN' : '👻 Ghost Modus: AUS';
+  btn.style.background = ghostMode ? 'rgba(10,132,255,0.3)' : 'var(--surface2)';
+  btn.style.borderColor = ghostMode ? 'var(--hider)' : 'var(--border)';
+  update(gRef('games/' + gameCode + '/players/' + myId), { ghost: ghostMode });
+  notify(ghostMode ? '👻 Du bist unsichtbar!' : '👁 Du bist wieder sichtbar!',
+    ghostMode ? 'var(--hider)' : 'var(--muted)');
+};
+
+function updatePlayerMarkers(players) {
+  if (!gameMap) return;
+  Object.entries(players).forEach(([id, p]) => {
+    if (id === myId) return;
+    if (!p.lat || !p.lng) return;
+
+    // Visibility rules:
+    // Seeker: sees only other seekers (NEVER hiders)
+    // Hider: sees other non-ghost hiders ONLY (never sees seekers on map)
+    let canSee = false;
+    if (myRole === 'seeker') {
+      canSee = p.role === 'seeker';
+    } else {
+      canSee = p.role === 'hider' && !p.ghost;
+    }
+
+    if (!canSee) {
+      // remove marker if it exists
+      if (playerMarkers[id]) { gameMap.removeLayer(playerMarkers[id]); delete playerMarkers[id]; }
+      return;
+    }
+
+    if (!playerMarkers[id]) {
+      playerMarkers[id] = L.circleMarker([p.lat, p.lng], {
+        radius: 9, color: p.role === 'seeker' ? '#ff3b30' : '#0a84ff',
+        fillOpacity: 0.7, weight: 2
+      }).addTo(gameMap).bindTooltip(p.name, { permanent: false });
+    } else {
+      playerMarkers[id].setLatLng([p.lat, p.lng]);
+    }
+  });
+}
+
+function updateCatchTargets(players) {
+  if (myRole !== 'seeker') return;
+  const sel = document.getElementById('catch-target');
+  const current = sel.value;
+  sel.innerHTML = '<option value="">– Spieler wählen –</option>';
+  Object.entries(players).forEach(([id, p]) => {
+    if (p.role === 'hider' && p.status === 'active') {
+      sel.innerHTML += `<option value="${id}">${p.name}</option>`;
+    }
+  });
+  if (current) sel.value = current;
+}
+
+// ── SHRINKING ZONE ───────────────────────
+let shrinkInterval = null;
+let currentZonePolygon = null;   // active zone (red)
+let nextZonePolygon = null;      // upcoming zone (purple dashed)
+let shrinkOverlay = null;
+let shrinkPreviewOverlay = null;
+let originalZoneOverlay = null;
+let zoneWarningShown = false;
+let currentPhase = -1;           // which phase we're on (-1 = not started)
+let perVertexSeeds = null;
+
+// Phase timings (ms from game start)
+// 3 phases in first 5 min (0–300s): at 100s, 200s, 300s
+// 5 phases in next 10 min (300–900s): at 420s, 540s, 660s, 780s, 900s
+const PHASE_TIMES = [
+  100000, 200000, 300000,         // first 5 min
+  420000, 540000, 660000, 780000, 900000  // last 10 min
+];
+
+function seededRand(seed) {
+  const x = Math.sin(seed * 9301 + 49297) * 233280;
+  return x - Math.floor(x);
+}
+
+function initPerVertexSeeds(zone) {
+  // Seed from zone coordinates themselves so ALL clients get identical curves
+  perVertexSeeds = zone.map((pt, i) => {
+    const base = Math.abs(pt[0] * 1000 + pt[1] * 1000 + i * 97);
+    return {
+      curvePull:   (seededRand(base + 2) - 0.5) * 1.6,
+      wobbleMag:   0.00006 + seededRand(base + 6) * 0.00014,
+      wobblePhase: seededRand(base + 5) * Math.PI * 2,
+    };
+  });
+}
+
+// Insert curved midpoints for organic look
+function curvedPolygon(pts) {
+  if (pts.length < 3) return pts;
+  const out = [];
+  const n = pts.length;
+  for (let i = 0; i < n; i++) {
+    const a = pts[i];
+    const b = pts[(i + 1) % n];
+    out.push(a);
+    const seed = perVertexSeeds ? perVertexSeeds[i] : null;
+    const pull = seed ? seed.curvePull * 0.00007 : 0;
+    out.push([
+      (a[0] + b[0]) / 2 + (b[1] - a[1]) * pull,
+      (a[1] + b[1]) / 2 - (b[0] - a[0]) * pull,
+    ]);
+  }
+  return out;
+}
+
+// Build a zone at shrink factor s (0=original, 1=fully closed)
+// Keeps freePoint roughly centered by shrinking each vertex towards
+// a weighted target: 70% freePoint + 30% centroid of remaining zone
+function buildZoneAtFactor(originalZone, freePoint, s, phaseIndex) {
+  if (!perVertexSeeds) initPerVertexSeeds(originalZone);
+
+  // Centroid of original zone
+  const centLat = originalZone.reduce((a, p) => a + p[0], 0) / originalZone.length;
+  const centLng = originalZone.reduce((a, p) => a + p[1], 0) / originalZone.length;
+
+  // Target: weighted between freePoint and centroid
+  // This keeps freePoint closer to center of new zone
+  const target = {
+    lat: freePoint.lat * 0.65 + centLat * 0.35,
+    lng: freePoint.lng * 0.65 + centLng * 0.35,
+  };
+
+  // Easing: fast start, slow end
+  const eased = Math.pow(s, 0.42);
+
+  // Per-vertex speed variation — seeded from coordinates so identical across clients
+  return originalZone.map(([lat, lng], i) => {
+    const base = Math.abs(lat * 1000 + lng * 1000 + i * 97 + phaseIndex * 53);
+    const speedMult = 0.5 + seededRand(base + 1) * 1.0;
+    const vt = Math.min(1, eased * speedMult);
+    const seed = perVertexSeeds[i];
+    const wobble = Math.sin(seed.wobblePhase + phaseIndex * 1.7 + i * 0.9) * seed.wobbleMag * (1 - eased);
+    return [
+      lat + (target.lat - lat) * vt + wobble,
+      lng + (target.lng - lng) * vt + wobble * 0.6,
+    ];
+  });
+}
+
+// Shrink factors per phase — gentle early game, faster late game
+// After phase 0 (~1:40), only ~12% of area should be gone, not half
+const PHASE_FACTORS = [0.10, 0.18, 0.27, 0.36, 0.47, 0.59, 0.74, 0.90];
+
+function getPhaseZone(phaseIndex) {
+  if (!gameState?.zone || !gameState?.freePoint) return null;
+  const s = PHASE_FACTORS[Math.min(phaseIndex, PHASE_FACTORS.length - 1)];
+  return buildZoneAtFactor(gameState.zone, gameState.freePoint, s, phaseIndex);
+}
+
+function startShrinkZone() {
+  if (shrinkInterval) return;
+  if (gameState?.zone) initPerVertexSeeds(gameState.zone);
+
+  // Draw original zone green
+  if (gameMap && gameState?.zone) {
+    if (originalZoneOverlay) gameMap.removeLayer(originalZoneOverlay);
+    originalZoneOverlay = L.polygon(curvedPolygon(gameState.zone.map(p=>[...p])), {
+      color: '#30d158', fillColor: '#30d158', fillOpacity: 0.06, weight: 2, opacity: 0.55
+    }).addTo(gameMap);
+  }
+
+  // Show phase 0 preview immediately (dashed purple)
+  if (isHost) {
+    const phase0Zone = getPhaseZone(0);
+    update(gRef('games/' + gameCode), {
+      currentZone: null,
+      previewZone: phase0Zone,
+      zonePhase: -1
+    });
+  }
+
+  shrinkInterval = setInterval(async () => {
+    if (!gameState?.startedAt) return;
+    const elapsed = Date.now() - gameState.startedAt;
+
+    // Determine which phase we should be on
+    let phase = -1;
+    for (let i = 0; i < PHASE_TIMES.length; i++) {
+      if (elapsed >= PHASE_TIMES[i]) phase = i;
+    }
+
+    // Phase changed — host writes new zones to Firebase
+    if (isHost && phase !== currentPhase) {
+      currentPhase = phase;
+      const nextPhase = phase + 1;
+
+      // Warn before first shrink
+      if (phase === 0 && !zoneWarningShown) {
+        zoneWarningShown = true;
+        notify('⚠️ Die Zone beginnt sich zu verkleinern!', 'var(--accent2)');
+        playAlarm();
+      } else if (phase > 0) {
+        notify('⚠️ Die Zone hat sich verkleinert!', 'var(--accent)');
+      }
+
+      const activeZone  = phase >= 0  ? getPhaseZone(phase) : null;
+      const previewZone = nextPhase < PHASE_TIMES.length ? getPhaseZone(nextPhase) : null;
+
+      await update(gRef('games/' + gameCode), {
+        currentZone: activeZone,
+        previewZone: previewZone,
+        zonePhase: phase
+      });
+    }
+
+    // All clients render from Firebase gameState
+    const activeZone  = gameState.currentZone  || null;
+    const previewZone = gameState.previewZone || null;
+
+    if (gameState.zonePhase !== currentPhase) {
+      currentPhase = gameState.zonePhase ?? -1;
+    }
+
+    // Update bounds polygon for out-of-bounds check
+    currentZonePolygon = activeZone || gameState.zone;
+
+    if (gameMap) {
+      if (shrinkOverlay)        gameMap.removeLayer(shrinkOverlay);
+      if (shrinkPreviewOverlay) gameMap.removeLayer(shrinkPreviewOverlay);
+
+      // Purple dashed preview
+      if (previewZone) {
+        shrinkPreviewOverlay = L.polygon(curvedPolygon(previewZone), {
+          color: '#bf5af2', fill: false, weight: 1.5, dashArray: '7 5', opacity: 0.75
+        }).addTo(gameMap);
+      }
+
+      // Red active zone (only if phase >= 0)
+      if (activeZone) {
+        shrinkOverlay = L.polygon(curvedPolygon(activeZone), {
+          color: '#ff3b30', fillColor: '#ff3b30', fillOpacity: 0.08, weight: 2.5
+        }).addTo(gameMap);
+      }
+    }
+  }, 2000);
+}
+
+function stopShrinkZone() {
+  if (shrinkInterval) { clearInterval(shrinkInterval); shrinkInterval = null; }
+  if (shrinkOverlay        && gameMap) { gameMap.removeLayer(shrinkOverlay);        shrinkOverlay = null; }
+  if (shrinkPreviewOverlay && gameMap) { gameMap.removeLayer(shrinkPreviewOverlay); shrinkPreviewOverlay = null; }
+  if (originalZoneOverlay  && gameMap) { gameMap.removeLayer(originalZoneOverlay);  originalZoneOverlay = null; }
+}
+
+// ── BOUNDS CHECK ─────────────────────────
+function checkBounds() {
+  if (!myPos || !gameState?.zone || gameState.status !== 'playing') return;
+
+  // Use shrinking zone if active, otherwise static zone
+  const zone = gameState.currentZone || currentZonePolygon || gameState.zone;
+  const inside = pointInPolygon([myPos.lat, myPos.lng], zone);
+
+  if (!inside) {
+    if (!outOfBoundsTimer) {
+      let t = 15;
+      const oob = document.getElementById('oob-overlay');
+      oob.classList.add('show');
+      document.getElementById('oob-countdown').textContent = t;
+      outOfBoundsTimer = setInterval(() => {
+        t--;
+        document.getElementById('oob-countdown').textContent = t;
+        if (t <= 0) {
+          clearInterval(outOfBoundsTimer);
+          outOfBoundsTimer = null;
+          oob.classList.remove('show');
+          eliminateMe('Zone verlassen');
+        }
+      }, 1000);
+    }
+  } else {
+    if (outOfBoundsTimer) {
+      clearInterval(outOfBoundsTimer);
+      outOfBoundsTimer = null;
+      document.getElementById('oob-overlay').classList.remove('show');
+    }
+  }
+}
+
+// ── ANTI-CAMP & WARN ZONE ────────────────
+let campPos = null, campStart = null;
+let seekerCooldownUntil = 0;
+let seekerInZoneSince = null;
+let seekerBeepInterval = null;
+let catchActive = false;
+let catchCooldownUntil = 0;
+let warnBannerTimer = null;
+
+function showWarnBanner(secondsLeft, total) {
+  const banner = document.getElementById('warnzone-banner');
+  const cd = document.getElementById('warnzone-countdown');
+  if (!banner) return;
+  banner.style.display = 'block';
+  cd.textContent = secondsLeft;
+}
+function hideWarnBanner() {
+  const banner = document.getElementById('warnzone-banner');
+  if (banner) banner.style.display = 'none';
+}
+
+function playBeep(freq) {
+  try {
+    if (!audioCtx) return;
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    const osc = audioCtx.createOscillator();
+    const g = audioCtx.createGain();
+    osc.connect(g); g.connect(audioCtx.destination);
+    osc.frequency.value = freq;
+    g.gain.setValueAtTime(0.3, audioCtx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.12);
+    osc.start(); osc.stop(audioCtx.currentTime + 0.12);
+  } catch(e) {}
+  if (navigator.vibrate) navigator.vibrate(60);
+}
+
+function checkAntiCamp() {
+  if (!myPos || !gameState?.freePoint || gameState.status !== 'playing') return;
+  const fp = gameState.freePoint;
+  const warnRadius = gameState.warnRadius || 15;
+  const seekerMaxTime = gameState.seekerCampTime || 10;
+  const hiderMaxTime = gameState.hiderCampTime || 10;
+  const d = dist(myPos.lat, myPos.lng, fp.lat, fp.lng);
+  const now = Date.now();
+
+  if (myRole === 'seeker') {
+    const inWarnZone = d < warnRadius;
+
+    if (catchActive || now < catchCooldownUntil) {
+      seekerInZoneSince = null;
+      if (seekerBeepInterval) { clearInterval(seekerBeepInterval); seekerBeepInterval = null; }
+      hideWarnBanner();
+      return;
+    }
+
+    if (now < seekerCooldownUntil) {
+      const remaining = Math.ceil((seekerCooldownUntil - now) / 1000);
+      if (inWarnZone) notify(`🚫 Noch ${remaining}s Sperrzeit – bleib außerhalb!`, 'var(--accent)');
+      hideWarnBanner();
+      return;
+    }
+
+    if (inWarnZone) {
+      if (!seekerInZoneSince) seekerInZoneSince = now;
+      const timeIn = (now - seekerInZoneSince) / 1000;
+      const remaining = Math.ceil(seekerMaxTime - timeIn);
+      showWarnBanner(remaining, seekerMaxTime);
+
+      // beep every second after half time, synced with countdown
+      const halfTime = seekerMaxTime / 2;
+      if (timeIn >= halfTime && !seekerBeepInterval) {
+        playBeep(660);
+        seekerBeepInterval = setInterval(() => playBeep(660), 1000);
+      }
+
+      if (timeIn >= seekerMaxTime) {
+        seekerInZoneSince = null;
+        if (seekerBeepInterval) { clearInterval(seekerBeepInterval); seekerBeepInterval = null; }
+        hideWarnBanner();
+        seekerCooldownUntil = now + 10000;
+        notify('🚫 Du musst jetzt 10 Sek. außerhalb der Warnzone bleiben!', 'var(--accent)');
+        if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+      }
+    } else {
+      seekerInZoneSince = null;
+      if (seekerBeepInterval) { clearInterval(seekerBeepInterval); seekerBeepInterval = null; }
+      hideWarnBanner();
+    }
+
+  } else if (myRole === 'hider') {
+    const inWarnZone = d < warnRadius;
+    if (inWarnZone) {
+      if (!campStart) campStart = now;
+      const timeIn = (now - campStart) / 1000;
+      const remaining = Math.ceil(hiderMaxTime - timeIn);
+      showWarnBanner(remaining, hiderMaxTime);
+
+      const halfTime = hiderMaxTime / 2;
+      if (timeIn >= halfTime && !seekerBeepInterval) {
+        playBeep(440);
+        seekerBeepInterval = setInterval(() => playBeep(440), 1000);
+      }
+
+      if (timeIn >= hiderMaxTime) {
+        campStart = null;
+        if (seekerBeepInterval) { clearInterval(seekerBeepInterval); seekerBeepInterval = null; }
+        hideWarnBanner();
+        eliminateMe('Warnzone zu lange betreten');
+      }
+    } else {
+      campStart = null;
+      if (seekerBeepInterval) { clearInterval(seekerBeepInterval); seekerBeepInterval = null; }
+      hideWarnBanner();
+    }
+  }
+}
+
+// ── CATCH MECHANIC ───────────────────────
+window.pressCatch = async function() {
+  const targetId = document.getElementById('catch-target').value;
+  if (!targetId) { notify('Wähle einen Spieler!', 'var(--accent)'); return; }
+  if (!gameState?.players?.[targetId]) return;
+
+  catchActive = true;
+
+  await set(gRef('games/' + gameCode + '/catchRace'), {
+    seekerId: myId,
+    seekerName: myName,
+    targetId,
+    targetName: gameState.players[targetId].name,
+    startTime: Date.now(),
+    winner: null
+  });
+
+  notify('🎯 Race gestartet! Zum Freipunkt!', 'var(--accent)');
+};
+
+function handleCatchRace(race) {
+  if (!race || race.winner) return;
+  if (race.seekerId !== myId && race.targetId !== myId) return; // not involved
+
+  const overlay = document.getElementById('catch-race-overlay');
+  overlay.style.display = 'block';
+
+  const iAmSeeker = race.seekerId === myId;
+  document.getElementById('race-icon').textContent = iAmSeeker ? '🔦' : '🏃';
+  document.getElementById('race-title').textContent = iAmSeeker
+    ? `CATCH! Race zu Freipunkt!`
+    : `${race.seekerName} hat dich gesehen! Lauf!`;
+
+  let t = 15;
+  document.getElementById('race-countdown').textContent = t;
+  document.getElementById('race-result').style.display = 'none';
+
+  if (catchRaceTimer) clearInterval(catchRaceTimer);
+  catchRaceTimer = setInterval(() => {
+    t--;
+    document.getElementById('race-countdown').textContent = t;
+    if (!myPos || !gameState?.freePoint) return;
+
+    const fp = gameState.freePoint;
+    const freeRadius = gameState.freeRadius || 8;
+    const d = dist(myPos.lat, myPos.lng, fp.lat, fp.lng);
+
+    if (d < freeRadius) { // reached free point!
+      clearInterval(catchRaceTimer);
+      const won = true;
+      resolveRace(race, iAmSeeker ? 'seeker' : 'hider');
+    }
+
+    if (t <= 0) {
+      clearInterval(catchRaceTimer);
+      catchActive = false;
+      catchCooldownUntil = Date.now() + 30000;
+      // time ran out, neither reached – race cancelled
+      remove(gRef('games/' + gameCode + '/catchRace'));
+      overlay.style.display = 'none';
+      notify('⏱ Zu langsam – Race abgebrochen', 'var(--accent2)');
+    }
+  }, 1000);
+}
+
+async function resolveRace(race, whoWon) {
+  catchActive = false;
+  catchCooldownUntil = Date.now() + 30000;
+  await update(gRef('games/' + gameCode + '/catchRace'), { winner: whoWon });
+
+  const overlay = document.getElementById('catch-race-overlay');
+  const resultEl = document.getElementById('race-result');
+  const resultText = document.getElementById('race-result-text');
+
+  resultEl.style.display = 'block';
+  document.getElementById('race-countdown').style.display = 'none';
+
+  if (whoWon === 'seeker') {
+    resultText.textContent = '🔥 VERBRANNT!';
+    resultText.style.color = 'var(--accent)';
+    if (myId === race.targetId) {
+      setTimeout(() => { overlay.style.display = 'none'; eliminateMe('Verbrannt'); }, 2000);
+    } else {
+      // eliminate target with timestamp
+      await update(gRef('games/' + gameCode + '/players/' + race.targetId), {
+        status: 'out',
+        eliminatedAt: Date.now(),
+        eliminationReason: 'Verbrannt',
+        freedAt: null
+      });
+      setTimeout(() => {
+        overlay.style.display = 'none';
+        document.getElementById('race-countdown').style.display = 'block';
+        remove(gRef('games/' + gameCode + '/catchRace'));
+        checkWinCondition();
+      }, 2000);
+    }
+  } else {
+    resultText.textContent = '✅ FREI!';
+    resultText.style.color = 'var(--safe)';
+    // record freed timestamp only for the hider who reached the point
+    if (myId === race.targetId) {
+      await update(gRef('games/' + gameCode + '/players/' + myId), { freedAt: Date.now(), status: 'free' });
+    }
+    setTimeout(() => {
+      overlay.style.display = 'none';
+      document.getElementById('race-countdown').style.display = 'block';
+      remove(gRef('games/' + gameCode + '/catchRace'));
+    }, 2000);
+  }
+}
+
+async function eliminateMe(reason) {
+  const now = Date.now();
+  await update(gRef('games/' + gameCode + '/players/' + myId), { status: 'out', eliminatedAt: now, eliminationReason: reason });
+  if (gameMap) {
+    if (myMarker) { myMarker.setStyle({ color: '#888', fillOpacity: 0.3 }); }
+  }
+  notify('❌ Du bist ausgeschieden: ' + reason, 'var(--accent)');
+  if (isHost || myRole === 'seeker') checkWinCondition();
+}
+
+async function checkWinCondition() {
+  const snap = await get(gRef('games/' + gameCode + '/players'));
+  if (!snap.exists()) return;
+  const players = snap.val();
+  const activeSeekers = Object.values(players).filter(p => p.role === 'seeker' && p.status === 'active');
+  const activeHiders = Object.values(players).filter(p => p.role === 'hider' && p.status === 'active');
+
+  if (activeSeekers.length === 0) {
+    await update(gRef('games/' + gameCode), { status: 'ended', endReason: 'hiders-win' });
+  } else if (activeHiders.length === 0) {
+    await update(gRef('games/' + gameCode), { status: 'ended', endReason: 'seekers-win' });
+  }
+}
+
+// ── GPS PERMISSION ───────────────────────
+let gpsGranted = false;
+let gpsCheckTimer = null;
+
+window.requestGPS = function() {
+  navigator.geolocation.getCurrentPosition(pos => {
+    gpsGranted = true;
+    myPos = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+    const prompt = document.getElementById('gps-prompt');
+    if (prompt) {
+      prompt.style.background = 'rgba(48,209,88,0.12)';
+      prompt.style.borderColor = 'var(--safe)';
+      prompt.innerHTML = `<span style="font-size:1.3rem">✅</span><div style="font-size:0.8rem;font-weight:600;color:var(--safe)">GPS aktiv!</div>`;
+    }
+  }, err => {
+    const prompt = document.getElementById('gps-prompt');
+    if (prompt) {
+      prompt.style.borderColor = 'var(--accent)';
+      prompt.innerHTML = `<span style="font-size:1.3rem">❌</span>
+        <div style="flex:1">
+          <div style="font-size:0.8rem;font-weight:600;color:var(--accent)">GPS blockiert!</div>
+          <div style="font-size:0.7rem;color:var(--muted)">Einstellungen → Safari → Standort → Erlauben</div>
+        </div>`;
+    }
+  }, { enableHighAccuracy: true, timeout: 8000 });
+};
+let trackInterval = null;
+let lastTrackPos = null;
+
+function startTrackRecording() {
+  if (trackInterval) return;
+  trackInterval = setInterval(() => {
+    if (!myPos || gameState?.status !== 'playing') return;
+    // Only write if moved more than 2m to save Firebase writes
+    if (lastTrackPos) {
+      const d = dist(myPos.lat, myPos.lng, lastTrackPos.lat, lastTrackPos.lng);
+      if (d < 2) return;
+    }
+    lastTrackPos = { ...myPos };
+    const t = Date.now();
+    push(gRef('games/' + gameCode + '/tracks/' + myId), { lat: myPos.lat, lng: myPos.lng, t });
+  }, 3000);
+}
+
+function stopTrackRecording() {
+  if (trackInterval) { clearInterval(trackInterval); trackInterval = null; }
+}
+
+// ── RECAP ENGINE ─────────────────────────
+let recapMap = null;
+let recapPlaying = false;
+let recapSpeed = 15; // x real time
+let recapCurrentTime = 0; // ms into game
+let recapDuration = 0;
+let recapAnimFrame = null;
+let recapLastTick = null;
+let recapData = null; // { players, tracks, events, startedAt }
+let recapEndReason = null;
+
+async function buildAndShowRecap(reason) {
+  recapEndReason = reason;
+
+  // Fetch all data
+  const [playersSnap, tracksSnap] = await Promise.all([
+    get(gRef('games/' + gameCode + '/players')),
+    get(gRef('games/' + gameCode + '/tracks'))
+  ]);
+
+  const players = playersSnap.exists() ? playersSnap.val() : {};
+  const tracksRaw = tracksSnap.exists() ? tracksSnap.val() : {};
+  const startedAt = gameState?.startedAt || Date.now();
+
+  // Convert tracks to sorted arrays with relative timestamps
+  const tracks = {};
+  Object.entries(tracksRaw).forEach(([pid, pts]) => {
+    tracks[pid] = Object.values(pts)
+      .sort((a, b) => a.t - b.t)
+      .map(p => ({ lat: p.lat, lng: p.lng, t: p.t - startedAt }));
+  });
+
+  // Build event list (catches, frees, eliminations)
+  const events = [];
+  Object.entries(players).forEach(([id, p]) => {
+    if (p.freedAt) events.push({ t: p.freedAt - startedAt, type: 'free', name: p.name });
+    if (p.eliminatedAt) events.push({ t: p.eliminatedAt - startedAt, type: 'out', name: p.name });
+  });
+  events.sort((a, b) => a.t - b.t);
+
+  // Total duration = latest event or track point
+  let maxT = 30000;
+  Object.values(tracks).forEach(pts => { if (pts.length) maxT = Math.max(maxT, pts[pts.length - 1].t); });
+  events.forEach(e => { maxT = Math.max(maxT, e.t + 2000); });
+  recapDuration = maxT + 3000;
+
+  recapData = { players, tracks, events, startedAt };
+  recapCurrentTime = 0;
+  recapPlaying = false;
+
+  showScreen('recap');
+  initRecapMap(players, tracks);
+  buildRecapLegend(players);
+  renderRecapFrame(0);
+}
+
+function initRecapMap(players, tracks) {
+  if (recapMap) { recapMap.remove(); recapMap = null; }
+  recapMap = L.map('recap-map', { zoomControl: false, attributionControl: false })
+    .setView([51.1657, 10.4515], 16);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(recapMap);
+
+  // Draw zone
+  if (gameState?.zone) {
+    L.polygon(gameState.zone, { color: '#ff3b30', fillOpacity: 0.08, weight: 2 }).addTo(recapMap);
+  }
+
+  // Draw free point zones
+  if (gameState?.freePoint) {
+    const fp = gameState.freePoint;
+    L.circle([fp.lat, fp.lng], { radius: gameState.warnRadius || 15, color: '#ff9500', fillOpacity: 0.06, weight: 1, dashArray: '4' }).addTo(recapMap);
+    L.circle([fp.lat, fp.lng], { radius: gameState.freeRadius || 8, color: '#30d158', fillOpacity: 0.15, weight: 2 }).addTo(recapMap);
+    L.circleMarker([fp.lat, fp.lng], { radius: 5, color: '#30d158', fillColor: '#30d158', fillOpacity: 1 }).addTo(recapMap)
+      .bindTooltip('🏁', { permanent: true, direction: 'top' });
+  }
+
+  // Draw full routes as faded lines
+  Object.entries(tracks).forEach(([pid, pts]) => {
+    if (pts.length < 2) return;
+    const p = players[pid];
+    const color = p?.role === 'seeker' ? '#ff3b30' : '#0a84ff';
+    L.polyline(pts.map(pt => [pt.lat, pt.lng]), { color, weight: 2, opacity: 0.25 }).addTo(recapMap);
+  });
+
+  // Fit map to all track points
+  const allPts = Object.values(tracks).flat().map(p => [p.lat, p.lng]);
+  if (gameState?.freePoint) allPts.push([gameState.freePoint.lat, gameState.freePoint.lng]);
+  if (allPts.length > 1) {
+    try { recapMap.fitBounds(L.latLngBounds(allPts), { padding: [40, 40] }); } catch(e) {}
+  }
+}
+
+// Per-player markers and trail lines for animation
+let recapMarkers = {};
+let recapTrails = {};
+let recapEventMarkers = [];
+
+function buildRecapLegend(players) {
+  const el = document.getElementById('recap-legend');
+  el.innerHTML = Object.values(players).map(p => {
+    const color = p.role === 'seeker' ? '#ff3b30' : '#0a84ff';
+    return `<div style="display:flex;align-items:center;gap:0.3rem;background:var(--surface2);border-radius:6px;padding:0.2rem 0.5rem;font-size:0.7rem">
+      <div style="width:8px;height:8px;border-radius:50%;background:${color};flex-shrink:0"></div>
+      <span>${p.name}</span>
+    </div>`;
+  }).join('');
+}
+
+function getPositionAtTime(pts, t) {
+  if (!pts || pts.length === 0) return null;
+  if (t <= pts[0].t) return { lat: pts[0].lat, lng: pts[0].lng };
+  if (t >= pts[pts.length - 1].t) return { lat: pts[pts.length - 1].lat, lng: pts[pts.length - 1].lng };
+  // interpolate
+  for (let i = 1; i < pts.length; i++) {
+    if (t <= pts[i].t) {
+      const a = pts[i - 1], b = pts[i];
+      const ratio = (t - a.t) / (b.t - a.t);
+      return { lat: a.lat + (b.lat - a.lat) * ratio, lng: a.lng + (b.lng - a.lng) * ratio };
+    }
+  }
+  return null;
+}
+
+function renderRecapFrame(t) {
+  if (!recapMap || !recapData) return;
+  const { players, tracks, events } = recapData;
+
+  // Update time display
+  document.getElementById('recap-time-display').textContent = Math.floor(t / 1000) + 's';
+  document.getElementById('recap-progress').style.width = (t / recapDuration * 100) + '%';
+
+  // Move player markers
+  Object.entries(players).forEach(([pid, p]) => {
+    const pts = tracks[pid];
+    if (!pts || pts.length === 0) return;
+    const pos = getPositionAtTime(pts, t);
+    if (!pos) return;
+
+    const color = p.role === 'seeker' ? '#ff3b30' : '#0a84ff';
+    const isEliminated = p.eliminatedAt && (p.eliminatedAt - recapData.startedAt) < t;
+    const isFree = p.freedAt && (p.freedAt - recapData.startedAt) < t;
+
+    if (!recapMarkers[pid]) {
+      // Create marker with name label
+      const icon = L.divIcon({
+        className: '',
+        html: `<div style="position:relative">
+          <div id="recap-dot-${pid}" style="width:14px;height:14px;border-radius:50%;background:${color};border:2px solid white;box-shadow:0 0 6px ${color}"></div>
+          <div style="position:absolute;top:16px;left:50%;transform:translateX(-50%);white-space:nowrap;font-size:10px;font-weight:700;color:white;text-shadow:0 1px 3px #000,0 0 6px #000;font-family:Inter,sans-serif">${p.name}</div>
+        </div>`,
+        iconAnchor: [7, 7]
+      });
+      recapMarkers[pid] = L.marker([pos.lat, pos.lng], { icon, zIndexOffset: 100 }).addTo(recapMap);
+      recapTrails[pid] = [[pos.lat, pos.lng]];
+    } else {
+      recapMarkers[pid].setLatLng([pos.lat, pos.lng]);
+      // Update trail
+      recapTrails[pid].push([pos.lat, pos.lng]);
+      if (recapTrails[pid].length > 30) recapTrails[pid].shift();
+    }
+
+    // Dim marker if eliminated
+    const dot = document.getElementById(`recap-dot-${pid}`);
+    if (dot) {
+      dot.style.opacity = isEliminated ? '0.35' : '1';
+      dot.style.background = isFree ? '#30d158' : color;
+    }
+  });
+
+  // Show events that just happened (within 2s window)
+  const banner = document.getElementById('recap-event-banner');
+  const activeEvent = events.find(e => e.t <= t && e.t > t - 2500);
+  if (activeEvent) {
+    banner.style.display = 'block';
+    const el = document.getElementById('recap-event-text');
+    if (activeEvent.type === 'free') {
+      el.textContent = `✅ ${activeEvent.name} ist frei!`;
+      el.style.borderColor = 'var(--safe)';
+    } else {
+      el.textContent = `🔥 ${activeEvent.name} wurde verbrannt!`;
+      el.style.borderColor = 'var(--accent)';
+    }
+  } else {
+    banner.style.display = 'none';
+  }
+}
+
+function recapTick() {
+  if (!recapPlaying) return;
+  const now = performance.now();
+  const delta = recapLastTick ? (now - recapLastTick) * recapSpeed : 0;
+  recapLastTick = now;
+  recapCurrentTime = Math.min(recapCurrentTime + delta, recapDuration);
+  renderRecapFrame(recapCurrentTime);
+  if (recapCurrentTime >= recapDuration) {
+    recapPlaying = false;
+    recapLastTick = null;
+    document.getElementById('recap-play-btn').textContent = '🔁';
+    return;
+  }
+  recapAnimFrame = requestAnimationFrame(recapTick);
+}
+
+window.recapTogglePlay = function() {
+  recapPlaying = !recapPlaying;
+  const btn = document.getElementById('recap-play-btn');
+  if (recapPlaying) {
+    if (recapCurrentTime >= recapDuration) recapCurrentTime = 0;
+    recapLastTick = null;
+    btn.textContent = '⏸️';
+    recapAnimFrame = requestAnimationFrame(recapTick);
+  } else {
+    recapLastTick = null;
+    btn.textContent = '▶️';
+    if (recapAnimFrame) cancelAnimationFrame(recapAnimFrame);
+  }
+};
+
+window.recapSetSpeed = function(val) {
+  recapSpeed = parseInt(val);
+};
+
+window.showLeaderboardFromRecap = function() {
+  showScreen('end');
+};
+// Host triggers the transition after hide timer
+function watchHidePhase() {
+  if (!isHost) return;
+  const hideTime = (gameState?.hideTime || 60) * 1000;
+  setTimeout(async () => {
+    await update(gRef('games/' + gameCode), { status: 'playing', startedAt: Date.now() });
+  }, hideTime);
+}
+
+// listen for status changes including hide-phase
+onValue; // already imported
+
+// ── END ──────────────────────────────────
+function showEnd(reason) {
+  if (gameListener) gameListener();
+  if (watchId) navigator.geolocation.clearWatch(watchId);
+  stopTrackRecording();
+  stopShrinkZone();
+  stopZoneHudTimer();
+  hideWarnBanner();
+
+  // build leaderboard data
+  get(gRef('games/' + gameCode + '/players')).then(snap => {
+    const players = snap.exists() ? snap.val() : {};
+
+    // populate end screen
+    if (reason === 'seekers-win') {
+      document.getElementById('end-icon').textContent = '🔥';
+      document.getElementById('end-title').textContent = 'VERBRANNT!';
+      document.getElementById('end-subtitle').textContent = 'Die Sucher haben alle Verstecker erwischt.';
+    } else {
+      document.getElementById('end-icon').textContent = '🏆';
+      document.getElementById('end-title').textContent = 'ALLE FREI!';
+      document.getElementById('end-subtitle').textContent = 'Die Verstecker haben gewonnen!';
+    }
+
+    const sorted = Object.values(players).sort((a, b) => {
+      if (a.role !== b.role) return a.role === 'seeker' ? -1 : 1;
+      if (a.freedAt && !b.freedAt) return -1;
+      if (!a.freedAt && b.freedAt) return 1;
+      const aTime = a.freedAt || a.eliminatedAt || 0;
+      const bTime = b.freedAt || b.eliminatedAt || 0;
+      return aTime - bTime;
+    });
+
+    const list = document.getElementById('leaderboard-list');
+    list.innerHTML = sorted.map(p => {
+      const isSeeker = p.role === 'seeker';
+      const isFree = p.status === 'free';
+      const isOut = p.status === 'out';
+      const eventTime = p.freedAt || p.eliminatedAt;
+      const timeStr = eventTime
+        ? Math.floor((eventTime - (gameState?.startedAt || eventTime)) / 1000) + 's'
+        : '–';
+
+      let outcomeIcon, outcomeText, outcomeColor;
+      if (isSeeker) {
+        outcomeIcon = '🔦';
+        outcomeText = isOut ? 'Ausgeschieden' : 'Sucher';
+        outcomeColor = isOut ? 'var(--muted)' : 'var(--seeker)';
+      } else if (isFree) {
+        outcomeIcon = '✅';
+        outcomeText = `Frei nach ${timeStr}`;
+        outcomeColor = 'var(--safe)';
+      } else {
+        outcomeIcon = '🔥';
+        outcomeText = `Verbrannt nach ${timeStr}`;
+        outcomeColor = 'var(--accent)';
+      }
+
+      return `
+        <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:0.75rem 1rem;display:flex;align-items:center;gap:0.75rem">
+          <div style="font-size:1.4rem;width:32px;text-align:center">${outcomeIcon}</div>
+          <div style="flex:1">
+            <div style="font-weight:600;font-size:0.95rem">${p.name}</div>
+            <div style="font-size:0.75rem;color:${outcomeColor}">${outcomeText}</div>
+          </div>
+          <div style="font-size:0.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.05em">${isSeeker ? 'Sucher' : 'Verstecker'}</div>
+        </div>`;
+    }).join('');
+
+    if (isHost) {
+      const btn = document.getElementById('play-again-btn');
+      if (btn) btn.style.display = 'block';
+    }
+
+    // Show recap first, leaderboard is ready behind it
+    buildAndShowRecap(reason);
+  });
+}
+
+window.playAgain = async function() {
+  const snap = await get(gRef('games/' + gameCode + '/players'));
+  if (!snap.exists()) return;
+  const players = snap.val();
+  const resetPlayers = {};
+  Object.entries(players).forEach(([id, p]) => {
+    resetPlayers[id] = { name: p.name, role: null, status: 'active', lat: p.lat, lng: p.lng, ghost: false, joinedAt: p.joinedAt };
+  });
+  await update(gRef('games/' + gameCode), { status: 'lobby', endReason: null, startedAt: null });
+  await set(gRef('games/' + gameCode + '/players'), resetPlayers);
+  await remove(gRef('games/' + gameCode + '/catchRace'));
+
+  myRole = null; ghostMode = false; hidePhaseTriggered = false;
+  gameMap = null; myMarker = null; playerMarkers = {};
+  stopTrackRecording(); lastTrackPos = null;
+  stopShrinkZone(); stopZoneHudTimer();
+  shrinkOverlay = null; currentZonePolygon = null; zoneWarningShown = false; perVertexSeeds = null; originalZoneOverlay = null;
+  if (recapMap) { recapMap.remove(); recapMap = null; }
+  recapMarkers = {}; recapTrails = {};
+  if (watchId) { navigator.geolocation.clearWatch(watchId); watchId = null; }
+  document.getElementById('game-map').innerHTML = '';
+  document.getElementById('recap-map').innerHTML = '';
+  const fb = document.getElementById('free-btn');
+  if (fb) fb.style.display = 'none';
+
+  enterLobby(gameCode);
+};
+
+window.returnHome = function() {
+  myRole = null; gameState = null; gameCode = ''; isHost = false;
+  setupMap = null; gameMap = null;
+  zonePoints = []; freePoint = null; zonePolygon = null; freeMarker = null;
+  myMarker = null; playerMarkers = {}; myPos = null;
+  stopTrackRecording();
+  stopShrinkZone(); stopZoneHudTimer();
+  shrinkOverlay = null; currentZonePolygon = null; zoneWarningShown = false; perVertexSeeds = null; originalZoneOverlay = null;
+  if (recapMap) { recapMap.remove(); recapMap = null; }
+  recapMarkers = {}; recapTrails = {};
+  document.getElementById('setup-map').innerHTML = '';
+  document.getElementById('game-map').innerHTML = '';
+  document.getElementById('recap-map').innerHTML = '';
+  showScreen('home');
+};
+
+// ── WIRE UP STATUS LISTENER FOR ROLE & HIDE ──
+// Host triggers game start after hide phase timer via watchHidePhase()
+// called directly from the Firebase listener in enterLobby
+
+window.startGame = async function() {
+  unlockAudio();
+  await update(gRef('games/' + gameCode), { status: 'hide-phase' });
+};
+
+</script>
+</body>
+</html>
